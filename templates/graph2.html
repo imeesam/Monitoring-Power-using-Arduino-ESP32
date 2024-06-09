@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Energy Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+       .chart-container {
+            width: 80%;
+            height: 200px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: white; /* Ensure chart background is white */
+            position: relative;
+            z-index: 2;
+        }
+
+       .chart-container canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+       .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: -moz-linear-gradient(-45deg, #de437d 0%, #5b44b9 100%);
+            background: -webkit-linear-gradient(-45deg, #de437d 0%,#5b44b9 100%);
+            background: linear-gradient(135deg, #de437d 0%,#5b44b9 100%);
+            filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#de437d', endColorstr='#5b44b9',GradientType=1);
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+    <h1>Smart Energy Hub</h1>
+
+    <div class="chart-container">
+        <canvas id="voltage-chart"></canvas>
+        <p style="text-align: center; font-size: 18px; margin-top: 10px;"></p>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="current-chart"></canvas>
+        <p style="text-align: center; font-size: 18px; margin-top: 10px;"></p>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="power-chart"></canvas>
+        <p style="text-align: center; font-size: 18px; margin-top: 10px;"></p>
+    </div>
+
+    <script>
+        let voltageChart;
+        let currentChart;
+        let powerChart;
+        function getGraphData() {
+            fetch('/api/get-graph-data')
+            .then(response => response.json())
+            .then(data => {
+                    updateVoltageGraph(data.labels, data.Voltage);
+                    updateCurrentGraph(data.labels, data.Current);
+                    updatePowerGraph(data.labels, data.Voltage, data.Current);
+                })
+            .catch(error => console.error(error));
+        }
+        function updateVoltageGraph(labels, Voltage) {
+            if (!voltageChart) {
+                const ctx = document.getElementById('voltage-chart').getContext('2d');
+                voltageChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Voltage (V)',
+                            data: Voltage,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom'
+                            },
+                            y: {
+                                suggestedMin: 0,
+                                suggestedMax: 50
+                            }
+                        }
+                    }
+                });
+            } else {
+                voltageChart.data.labels = labels;
+                voltageChart.data.datasets[0].data = Voltage;
+                voltageChart.update();
+            }
+        }
+        function updateCurrentGraph(labels, Current) {
+            if (!currentChart) {
+                const ctx = document.getElementById('current-chart').getContext('2d');
+                currentChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Current (A)',
+                            data: Current,
+                            borderColor: 'rgba(192, 75, 75, 1)',
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom'
+                            },
+                            y: {
+                                suggestedMin: 0,
+                                suggestedMax: 5
+                            }
+                        }
+                    }
+                });
+            } else {
+                currentChart.data.labels = labels;
+                currentChart.data.datasets[0].data = Current;
+                currentChart.update();
+            }
+        }
+        function updatePowerGraph(labels, Voltage, Current) {
+            if (!powerChart) {
+                const ctx = document.getElementById('power-chart').getContext('2d');
+                powerChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Power (W)',
+                            data: Voltage.map((temp, index) => temp * Current[index]),
+                            borderColor: 'rgba(148, 247, 124)',
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom'
+                            },
+                            y: {
+                                suggestedMin: 0,
+                                suggestedMax: 100
+                            }
+                        }
+                    }
+                });
+            } else {
+                powerChart.data.labels = labels;
+                powerChart.data.datasets[0].data = Voltage.map((temp, index) => temp * Current[index]);
+                powerChart.update();
+            }
+        }
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            getGraphData();
+            setInterval(getGraphData, 1000);
+        });
+    </script>
+</body>
+</html>
